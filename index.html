@@ -1,409 +1,154 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>ICT103 Python Compiler</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,600;1,400&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/comment/comment.min.js"></script>
   <style>
     :root {
-      --bg: #0e0f14;
-      --surface: #16181f;
-      --surface2: #1e2029;
-      --border: #2a2d3a;
-      --accent: #f5c518;
-      --accent2: #e8843a;
-      --text: #e4e6f0;
-      --muted: #6b7087;
-      --green: #4ade80;
-      --red: #f87171;
-      --blue: #60a5fa;
+      --bg:#0e0f14; --surface:#16181f; --surface2:#1e2029; --surface3:#252836;
+      --border:#2a2d3a; --accent:#f5c518; --accent2:#e8843a;
+      --text:#e4e6f0; --muted:#6b7087; --green:#4ade80; --red:#f87171; --blue:#60a5fa;
+      --sidebar-w:210px;
     }
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;height:100vh;display:flex;flex-direction:column;overflow:hidden;}
 
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    /* HEADER */
+    header{background:var(--surface);border-bottom:1px solid var(--border);padding:9px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0;}
+    .logo{display:flex;align-items:center;gap:8px;}
+    .logo-icon{width:28px;height:28px;background:var(--accent);border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-weight:600;font-size:11px;color:#0e0f14;flex-shrink:0;}
+    .logo-text{font-size:14px;font-weight:800;letter-spacing:-0.3px;}
+    .logo-text span{color:var(--accent);}
+    .shortcut-hint{margin-left:auto;font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace;background:var(--surface2);border:1px solid var(--border);padding:4px 8px;border-radius:5px;}
 
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: 'Syne', sans-serif;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
+    /* WORKSPACE */
+    .workspace{display:flex;flex:1;overflow:hidden;}
 
-    header {
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      padding: 14px 28px;
-      display: flex;
-      align-items: center;
-      gap: 16px;
-    }
+    /* SIDEBAR */
+    .sidebar{width:var(--sidebar-w);background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;}
+    .sidebar-header{padding:9px 11px 8px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:5px;}
+    .sidebar-title{font-size:9px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);flex:1;}
+    .sidebar-add{background:none;border:none;cursor:pointer;color:var(--muted);font-size:18px;line-height:1;padding:0 2px;border-radius:4px;transition:color 0.12s;}
+    .sidebar-add:hover{color:var(--accent);}
+    .file-list{flex:1;overflow-y:auto;padding:4px 0;}
+    .file-item{display:flex;align-items:center;gap:5px;padding:6px 11px;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--muted);border-left:2px solid transparent;transition:all 0.12s;user-select:none;}
+    .file-item:hover{background:var(--surface2);color:var(--text);}
+    .file-item.active{background:var(--surface2);color:var(--accent);border-left-color:var(--accent);}
+    .file-icon{font-size:10px;flex-shrink:0;}
+    .file-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .file-actions{display:none;gap:1px;flex-shrink:0;}
+    .file-item:hover .file-actions{display:flex;}
+    .file-action-btn{background:none;border:none;cursor:pointer;color:var(--muted);font-size:11px;padding:2px 3px;border-radius:3px;transition:color 0.12s;}
+    .file-action-btn:hover{color:var(--text);}
+    .file-action-btn.del:hover{color:var(--red);}
+    .sidebar-footer{border-top:1px solid var(--border);padding:8px 11px;}
+    .examples-label{font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:5px;display:block;}
+    .example-chips{display:flex;flex-wrap:wrap;gap:3px;}
+    .example-chip{background:var(--surface2);border:1px solid var(--border);border-radius:99px;padding:3px 8px;font-size:10px;color:var(--muted);cursor:pointer;font-family:'JetBrains Mono',monospace;transition:all 0.12s;}
+    .example-chip:hover{color:var(--accent);border-color:var(--accent);}
 
-    .logo {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
+    /* EDITOR AREA */
+    .editor-area{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+    .tabs-bar{display:flex;align-items:center;background:var(--surface2);border-bottom:1px solid var(--border);overflow-x:auto;flex-shrink:0;}
+    .tabs-bar::-webkit-scrollbar{height:3px;}
+    .tabs-bar::-webkit-scrollbar-thumb{background:var(--border);}
+    .tab{display:flex;align-items:center;gap:5px;padding:7px 12px;cursor:pointer;white-space:nowrap;font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--muted);border-right:1px solid var(--border);border-bottom:2px solid transparent;transition:all 0.12s;flex-shrink:0;}
+    .tab:hover{color:var(--text);background:var(--surface3);}
+    .tab.active{color:var(--accent);border-bottom-color:var(--accent);background:var(--surface);}
+    .tab-close{background:none;border:none;cursor:pointer;color:var(--muted);font-size:13px;line-height:1;padding:0 2px;border-radius:3px;transition:color 0.12s;}
+    .tab-close:hover{color:var(--red);}
 
-    .logo-icon {
-      width: 34px; height: 34px;
-      background: var(--accent);
-      border-radius: 8px;
-      display: flex; align-items: center; justify-content: center;
-      font-family: 'JetBrains Mono', monospace;
-      font-weight: 600;
-      font-size: 14px;
-      color: #0e0f14;
-      flex-shrink: 0;
-    }
+    /* SPLIT */
+    .edit-output{flex:1;display:grid;grid-template-columns:1fr 1fr;overflow:hidden;}
+    .editor-panel,.output-panel{display:flex;flex-direction:column;overflow:hidden;}
+    .editor-panel{border-right:1px solid var(--border);}
+    .panel-header{display:flex;align-items:center;gap:7px;padding:6px 12px;border-bottom:1px solid var(--border);background:var(--surface2);flex-shrink:0;}
+    .panel-dot{width:7px;height:7px;border-radius:50%;}
+    .panel-title{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);}
+    .panel-actions{margin-left:auto;display:flex;gap:4px;align-items:center;}
 
-    .logo-text {
-      font-size: 17px;
-      font-weight: 800;
-      letter-spacing: -0.3px;
-    }
+    .btn{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:6px;border:none;cursor:pointer;font-family:'Syne',sans-serif;font-weight:700;font-size:11px;transition:all 0.15s;white-space:nowrap;}
+    .btn-run{background:var(--accent);color:#0e0f14;}
+    .btn-run:hover{background:#ffd63a;transform:translateY(-1px);}
+    .btn-run:active{transform:translateY(0);}
+    .btn-run:disabled{opacity:0.45;cursor:not-allowed;transform:none;}
+    .btn-ghost{background:var(--surface2);color:var(--muted);border:1px solid var(--border);}
+    .btn-ghost:hover{color:var(--text);border-color:var(--muted);}
+    .btn-stop{background:var(--surface2);color:var(--red);border:1px solid var(--border);display:none;}
+    .btn-stop:hover{background:var(--red);color:#fff;border-color:var(--red);}
+    .btn-danger:hover{color:var(--red);border-color:var(--red);}
 
-    .logo-text span {
-      color: var(--accent);
-    }
+    .icon-btn{background:none;border:none;color:var(--muted);cursor:pointer;padding:2px 5px;border-radius:4px;font-size:11px;transition:color 0.12s;}
+    .icon-btn:hover{color:var(--text);}
 
-    .badge {
-      margin-left: auto;
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 4px 10px;
-      font-size: 11px;
-      color: var(--muted);
-      font-family: 'JetBrains Mono', monospace;
-      letter-spacing: 0.5px;
-    }
+    /* CODEMIRROR */
+    .CodeMirror{font-family:'JetBrains Mono',monospace !important;font-size:13px !important;line-height:1.65 !important;height:100% !important;background:var(--surface) !important;color:#e4e6f0 !important;}
+    .CodeMirror-scroll{height:100% !important;}
+    .CodeMirror-gutters{background:var(--surface2) !important;border-right:1px solid var(--border) !important;}
+    .CodeMirror-linenumber{color:var(--muted) !important;}
+    .CodeMirror-cursor{border-left:2px solid var(--accent) !important;}
+    .CodeMirror-selected{background:rgba(245,197,24,0.12) !important;}
+    .CodeMirror-focused .CodeMirror-selected{background:rgba(245,197,24,0.15) !important;}
+    .cm-keyword{color:#c792ea !important;}.cm-def{color:#82aaff !important;}
+    .cm-string,.cm-string-2{color:#c3e88d !important;}.cm-number{color:#f78c6c !important;}
+    .cm-comment{color:#546e7a !important;font-style:italic !important;}
+    .cm-builtin{color:var(--accent2) !important;}.cm-operator{color:#89ddff !important;}
+    .editor-wrap{flex:1;overflow:hidden;position:relative;}
 
-    .main {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      padding: 20px 24px;
-      gap: 16px;
-      max-width: 1200px;
-      width: 100%;
-      margin: 0 auto;
-    }
+    /* TERMINAL */
+    .terminal{flex:1;display:flex;flex-direction:column;overflow:hidden;background:var(--bg);}
+    .terminal-output{flex:1;padding:12px 14px;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.7;overflow-y:auto;white-space:pre-wrap;word-break:break-word;}
+    .t-stdout{color:var(--green);}
+    .t-stderr{color:var(--red);}
+    .t-prompt{color:var(--text);}
+    .t-input{color:var(--blue);}
+    .t-info{color:var(--muted);font-style:italic;}
+    .t-system{color:var(--accent2);}
 
-    .toolbar {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
+    .terminal-input-row{display:flex;align-items:center;gap:0;border-top:1px solid var(--border);background:var(--surface2);flex-shrink:0;}
+    .terminal-prompt-sym{padding:8px 6px 8px 12px;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--accent);flex-shrink:0;user-select:none;}
+    .terminal-input{flex:1;background:transparent;border:none;outline:none;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;padding:8px 4px;caret-color:var(--accent);}
+    .terminal-input::placeholder{color:var(--muted);}
+    .terminal-input:disabled{opacity:0.4;cursor:not-allowed;}
+    .terminal-send{background:none;border:none;cursor:pointer;color:var(--muted);padding:6px 12px;font-size:13px;transition:color 0.12s;flex-shrink:0;}
+    .terminal-send:hover{color:var(--accent);}
+    .terminal-send:disabled{opacity:0.3;cursor:not-allowed;}
 
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 7px;
-      padding: 9px 18px;
-      border-radius: 8px;
-      border: none;
-      cursor: pointer;
-      font-family: 'Syne', sans-serif;
-      font-weight: 700;
-      font-size: 13px;
-      transition: all 0.15s ease;
-      letter-spacing: 0.2px;
-    }
+    /* STATUS */
+    .status-bar{display:flex;align-items:center;gap:6px;padding:5px 12px;border-top:1px solid var(--border);background:var(--surface2);flex-shrink:0;}
+    .status-dot{width:6px;height:6px;border-radius:50%;background:var(--muted);flex-shrink:0;}
+    .status-dot.ready{background:var(--green);}
+    .status-dot.running{background:var(--accent);animation:pulse 0.8s infinite;}
+    .status-dot.waiting{background:var(--blue);animation:pulse 0.6s infinite;}
+    .status-dot.error{background:var(--red);}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+    .status-text{font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace;}
+    .exec-time{margin-left:auto;font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace;}
 
-    .btn-run {
-      background: var(--accent);
-      color: #0e0f14;
-    }
-    .btn-run:hover { background: #ffd63a; transform: translateY(-1px); }
-    .btn-run:active { transform: translateY(0); }
-    .btn-run:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    /* LOADING */
+    #loading-overlay{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:999;transition:opacity 0.4s;}
+    .loading-logo{font-size:22px;font-weight:800;}.loading-logo span{color:var(--accent);}
+    .loading-bar-bg{width:210px;height:3px;background:var(--border);border-radius:99px;overflow:hidden;}
+    .loading-bar{height:100%;width:0%;background:var(--accent);border-radius:99px;transition:width 0.3s;}
+    .loading-msg{font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace;}
 
-    .btn-clear {
-      background: var(--surface2);
-      color: var(--muted);
-      border: 1px solid var(--border);
-    }
-    .btn-clear:hover { color: var(--text); border-color: var(--muted); }
-
-    .btn-reset {
-      background: var(--surface2);
-      color: var(--muted);
-      border: 1px solid var(--border);
-    }
-    .btn-reset:hover { color: var(--red); border-color: var(--red); }
-
-    .shortcut-hint {
-      margin-left: auto;
-      font-size: 11px;
-      color: var(--muted);
-      font-family: 'JetBrains Mono', monospace;
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      padding: 5px 10px;
-      border-radius: 6px;
-    }
-
-    .editor-section {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
-      flex: 1;
-    }
-
-    @media (max-width: 768px) {
-      .editor-section { grid-template-columns: 1fr; }
-    }
-
-    .panel {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .panel-header {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 10px 16px;
-      border-bottom: 1px solid var(--border);
-      background: var(--surface2);
-    }
-
-    .panel-dot {
-      width: 8px; height: 8px;
-      border-radius: 50%;
-    }
-
-    .panel-title {
-      font-size: 12px;
-      font-weight: 700;
-      letter-spacing: 1px;
-      text-transform: uppercase;
-      color: var(--muted);
-    }
-
-    .panel-actions {
-      margin-left: auto;
-      display: flex;
-      gap: 6px;
-    }
-
-    .icon-btn {
-      background: none;
-      border: none;
-      color: var(--muted);
-      cursor: pointer;
-      padding: 3px 6px;
-      border-radius: 4px;
-      font-size: 13px;
-      transition: color 0.15s;
-    }
-    .icon-btn:hover { color: var(--text); }
-
-    .CodeMirror {
-      font-family: 'JetBrains Mono', monospace !important;
-      font-size: 14px !important;
-      line-height: 1.65 !important;
-      height: 100% !important;
-      background: var(--surface) !important;
-      color: #e4e6f0 !important;
-    }
-
-    .CodeMirror-scroll { min-height: 340px; }
-    .CodeMirror-gutters { background: var(--surface2) !important; border-right: 1px solid var(--border) !important; }
-    .CodeMirror-linenumber { color: var(--muted) !important; }
-    .CodeMirror-cursor { border-left: 2px solid var(--accent) !important; }
-    .CodeMirror-selected { background: rgba(245,197,24,0.12) !important; }
-    .CodeMirror-focused .CodeMirror-selected { background: rgba(245,197,24,0.15) !important; }
-
-    /* Python syntax colors */
-    .cm-keyword { color: #c792ea !important; }
-    .cm-def { color: #82aaff !important; }
-    .cm-string { color: #c3e88d !important; }
-    .cm-string-2 { color: #c3e88d !important; }
-    .cm-number { color: #f78c6c !important; }
-    .cm-comment { color: #546e7a !important; font-style: italic !important; }
-    .cm-builtin { color: var(--accent2) !important; }
-    .cm-operator { color: #89ddff !important; }
-    .cm-variable { color: var(--text) !important; }
-
-    /* Input section */
-    .input-section {
-      border-top: 1px solid var(--border);
-      padding: 10px 16px;
-      background: var(--surface2);
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .input-label {
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.8px;
-      text-transform: uppercase;
-      color: var(--muted);
-      white-space: nowrap;
-      flex-shrink: 0;
-    }
-
-    .stdin-input {
-      flex: 1;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 7px 10px;
-      color: var(--text);
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 13px;
-      outline: none;
-      transition: border-color 0.15s;
-    }
-    .stdin-input:focus { border-color: var(--accent); }
-    .stdin-input::placeholder { color: var(--muted); }
-
-    /* Output panel */
-    .output-body {
-      flex: 1;
-      padding: 16px;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 13.5px;
-      line-height: 1.7;
-      overflow-y: auto;
-      min-height: 340px;
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
-
-    .output-empty {
-      color: var(--muted);
-      font-style: italic;
-      font-size: 13px;
-    }
-
-    .output-success { color: var(--green); }
-    .output-error { color: var(--red); }
-    .output-text { color: var(--text); }
-
-    .status-bar {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 16px;
-      border-top: 1px solid var(--border);
-      background: var(--surface2);
-    }
-
-    .status-indicator {
-      width: 7px; height: 7px;
-      border-radius: 50%;
-      background: var(--muted);
-      flex-shrink: 0;
-    }
-    .status-indicator.ready { background: var(--green); }
-    .status-indicator.running { background: var(--accent); animation: pulse 0.8s infinite; }
-    .status-indicator.error { background: var(--red); }
-
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.3; }
-    }
-
-    .status-text {
-      font-size: 11px;
-      color: var(--muted);
-      font-family: 'JetBrains Mono', monospace;
-    }
-
-    .exec-time {
-      margin-left: auto;
-      font-size: 11px;
-      color: var(--muted);
-      font-family: 'JetBrains Mono', monospace;
-    }
-
-    /* Loading overlay */
-    #loading-overlay {
-      position: fixed; inset: 0;
-      background: var(--bg);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 20px;
-      z-index: 999;
-      transition: opacity 0.4s ease;
-    }
-
-    .loading-logo {
-      font-size: 28px;
-      font-weight: 800;
-      letter-spacing: -0.5px;
-    }
-    .loading-logo span { color: var(--accent); }
-
-    .loading-bar-bg {
-      width: 240px;
-      height: 3px;
-      background: var(--border);
-      border-radius: 99px;
-      overflow: hidden;
-    }
-
-    .loading-bar {
-      height: 100%;
-      width: 0%;
-      background: var(--accent);
-      border-radius: 99px;
-      transition: width 0.3s ease;
-    }
-
-    .loading-msg {
-      font-size: 12px;
-      color: var(--muted);
-      font-family: 'JetBrains Mono', monospace;
-    }
-
-    .examples-bar {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
-    .examples-label {
-      font-size: 11px;
-      color: var(--muted);
-      font-weight: 700;
-      letter-spacing: 0.5px;
-      text-transform: uppercase;
-    }
-
-    .example-chip {
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: 99px;
-      padding: 4px 12px;
-      font-size: 12px;
-      color: var(--muted);
-      cursor: pointer;
-      font-family: 'JetBrains Mono', monospace;
-      transition: all 0.15s;
-    }
-    .example-chip:hover { color: var(--accent); border-color: var(--accent); }
+    /* MODAL */
+    .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:200;align-items:center;justify-content:center;}
+    .modal-bg.open{display:flex;}
+    .modal{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:22px;width:320px;display:flex;flex-direction:column;gap:13px;}
+    .modal h3{font-size:14px;font-weight:700;}
+    .modal input{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 11px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;outline:none;width:100%;transition:border-color 0.15s;}
+    .modal input:focus{border-color:var(--accent);}
+    .modal-hint{font-size:10px;color:var(--muted);}
+    .modal-actions{display:flex;gap:7px;justify-content:flex-end;}
   </style>
 </head>
 <body>
@@ -411,7 +156,30 @@
 <div id="loading-overlay">
   <div class="loading-logo">ICT103 <span>Python</span></div>
   <div class="loading-bar-bg"><div class="loading-bar" id="load-bar"></div></div>
-  <div class="loading-msg" id="load-msg">Loading Python runtime…</div>
+  <div class="loading-msg" id="load-msg">Fetching Python runtime…</div>
+</div>
+
+<div class="modal-bg" id="new-file-modal">
+  <div class="modal">
+    <h3>New File</h3>
+    <input type="text" id="new-file-name" placeholder="filename.py" autocomplete="off"/>
+    <div class="modal-hint">Must end in .py · Use underscores for spaces</div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeNewFileModal()">Cancel</button>
+      <button class="btn btn-run" onclick="confirmNewFile()">Create</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="rename-modal">
+  <div class="modal">
+    <h3>Rename File</h3>
+    <input type="text" id="rename-file-name" placeholder="new_name.py" autocomplete="off"/>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeRenameModal()">Cancel</button>
+      <button class="btn btn-run" onclick="confirmRename()">Rename</button>
+    </div>
+  </div>
 </div>
 
 <header>
@@ -419,403 +187,560 @@
     <div class="logo-icon">Py</div>
     <div class="logo-text">ICT103 <span>Python Compiler</span></div>
   </div>
-  <div class="badge">Powered by Pyodide · Runs in your browser</div>
+  <span class="shortcut-hint">Ctrl+Enter to run</span>
 </header>
 
-<div class="main">
-
-  <div class="toolbar">
-    <button class="btn btn-run" id="run-btn" disabled onclick="runCode()">
-      ▶ Run Code
-    </button>
-    <button class="btn btn-clear" onclick="clearOutput()">⌫ Clear Output</button>
-    <button class="btn btn-reset" onclick="resetCode()">↺ Reset</button>
-    <span class="shortcut-hint">Ctrl+Enter to run</span>
-  </div>
-
-  <div class="examples-bar">
-    <span class="examples-label">Examples:</span>
-    <span class="example-chip" onclick="loadExample('hello')">Hello World</span>
-    <span class="example-chip" onclick="loadExample('input')">User Input</span>
-    <span class="example-chip" onclick="loadExample('loop')">For Loop</span>
-    <span class="example-chip" onclick="loadExample('function')">Function</span>
-    <span class="example-chip" onclick="loadExample('list')">List</span>
-    <span class="example-chip" onclick="loadExample('calc')">Calculator</span>
-  </div>
-
-  <div class="editor-section">
-    <!-- Code Editor -->
-    <div class="panel">
-      <div class="panel-header">
-        <div class="panel-dot" style="background:#f87171"></div>
-        <div class="panel-dot" style="background:#fbbf24"></div>
-        <div class="panel-dot" style="background:#4ade80"></div>
-        <span class="panel-title" style="margin-left:6px">Code Editor</span>
-        <div class="panel-actions">
-          <button class="icon-btn" title="Copy code" onclick="copyCode()">⎘</button>
-        </div>
-      </div>
-      <textarea id="code-editor"></textarea>
-      <div class="input-section">
-        <span class="input-label">stdin</span>
-        <input class="stdin-input" id="stdin-input" type="text"
-               placeholder="Enter input values here (one per line, or comma-separated)…" />
-      </div>
+<div class="workspace">
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <span class="sidebar-title">Explorer</span>
+      <button class="sidebar-add" title="New file" onclick="openNewFileModal()">+</button>
     </div>
-
-    <!-- Output -->
-    <div class="panel">
-      <div class="panel-header">
-        <div class="panel-dot" style="background:var(--muted)"></div>
-        <span class="panel-title">Output</span>
-        <div class="panel-actions">
-          <button class="icon-btn" title="Copy output" onclick="copyOutput()">⎘</button>
-        </div>
-      </div>
-      <div class="output-body" id="output">
-        <span class="output-empty">// Your program output will appear here…</span>
-      </div>
-      <div class="status-bar">
-        <div class="status-indicator" id="status-dot"></div>
-        <span class="status-text" id="status-text">Loading Python…</span>
-        <span class="exec-time" id="exec-time"></span>
+    <div class="file-list" id="file-list"></div>
+    <div class="sidebar-footer">
+      <span class="examples-label">Load into active file</span>
+      <div class="example-chips">
+        <span class="example-chip" onclick="loadExample('hello')">Hello World</span>
+        <span class="example-chip" onclick="loadExample('acknowledge')">Acknowledgement</span>
       </div>
     </div>
   </div>
 
+  <!-- EDITOR AREA -->
+  <div class="editor-area">
+    <div class="tabs-bar" id="tabs-bar"></div>
+    <div class="edit-output">
+
+      <!-- CODE EDITOR -->
+      <div class="editor-panel">
+        <div class="panel-header">
+          <div class="panel-dot" style="background:#f87171"></div>
+          <div class="panel-dot" style="background:#fbbf24"></div>
+          <div class="panel-dot" style="background:#4ade80"></div>
+          <span class="panel-title" style="margin-left:4px" id="editor-filename">main.py</span>
+          <div class="panel-actions">
+            <button class="icon-btn" onclick="copyCode()">⎘ copy</button>
+            <button class="btn btn-ghost btn-danger" onclick="resetActiveFile()">↺ Reset</button>
+          </div>
+        </div>
+        <div class="editor-wrap">
+          <textarea id="code-editor"></textarea>
+        </div>
+      </div>
+
+      <!-- TERMINAL / OUTPUT -->
+      <div class="output-panel">
+        <div class="panel-header">
+          <div class="panel-dot" style="background:var(--muted)"></div>
+          <span class="panel-title">Terminal</span>
+          <div class="panel-actions">
+            <button class="btn btn-run" id="run-btn" disabled onclick="runCode()">▶ Run</button>
+            <button class="btn btn-stop" id="stop-btn" onclick="stopCode()">■ Stop</button>
+            <button class="btn btn-ghost" onclick="clearTerminal()">⌫ Clear</button>
+            <button class="icon-btn" onclick="copyOutput()">⎘</button>
+          </div>
+        </div>
+        <div class="terminal">
+          <div class="terminal-output" id="terminal-output">
+            <span class="t-info">// Python terminal ready. Click Run or press Ctrl+Enter…</span>
+          </div>
+          <div class="terminal-input-row">
+            <span class="terminal-prompt-sym">❯</span>
+            <input class="terminal-input" id="terminal-input" type="text"
+              placeholder="Type input here and press Enter…" disabled autocomplete="off"/>
+            <button class="terminal-send" id="terminal-send" disabled onclick="submitInput()">↵</button>
+          </div>
+        </div>
+        <div class="status-bar">
+          <div class="status-dot" id="status-dot"></div>
+          <span class="status-text" id="status-text">Loading Python…</span>
+          <span class="exec-time" id="exec-time"></span>
+        </div>
+      </div>
+
+    </div>
+  </div>
 </div>
 
-<script src="https://cdn.pyodide.org/v0.26.4/full/pyodide.js"></script>
+<!-- WORKER SCRIPT (embedded as blob) -->
+<script id="worker-src" type="text/plain">
+// ── PYODIDE WORKER ──────────────────────────────────────
+// Communicates with main thread via SharedArrayBuffer:
+//   controlSAB[0]: 0=idle, 1=input requested, 2=input ready, 3=stop
+//   dataSAB: UTF-8 encoded input string (up to 64KB)
+//   dataLenSAB[0]: byte length of input string
+
+let pyodide = null;
+let controlBuf, dataBuf, dataLenBuf;
+
+const CDNS = [
+  { js:'https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js', index:'https://cdn.jsdelivr.net/pyodide/v0.26.4/full/' },
+  { js:'https://cdn.pyodide.org/v0.26.4/full/pyodide.js',          index:'https://cdn.pyodide.org/v0.26.4/full/' },
+];
+
+async function loadPyodideInWorker() {
+  for (const cdn of CDNS) {
+    try {
+      self.postMessage({ type:'load-progress', msg:'Loading from ' + new URL(cdn.js).hostname + '…', pct:30 });
+      importScripts(cdn.js);
+      self.postMessage({ type:'load-progress', msg:'Initialising Python…', pct:55 });
+      pyodide = await loadPyodide({ indexURL: cdn.index });
+      self.postMessage({ type:'load-progress', msg:'Ready!', pct:100 });
+      self.postMessage({ type:'ready' });
+      return;
+    } catch(e) { console.warn('Worker CDN failed:', e); }
+  }
+  self.postMessage({ type:'error', msg:'Could not load Python runtime. Check connection and refresh.' });
+}
+
+self.onmessage = async (e) => {
+  const { type } = e.data;
+
+  if (type === 'init') {
+    controlBuf = new Int32Array(e.data.controlSAB);
+    dataBuf    = new Uint8Array(e.data.dataSAB);
+    dataLenBuf = new Int32Array(e.data.dataLenSAB);
+    await loadPyodideInWorker();
+    return;
+  }
+
+  if (type === 'run') {
+    const { files, activeFile } = e.data;
+    Atomics.store(controlBuf, 0, 0);
+
+    // Write files to virtual FS
+    for (const f of files) {
+      pyodide.FS.writeFile('/' + f.name, f.content);
+    }
+    pyodide.runPython(`import sys, os; os.chdir('/')\nif '/' not in sys.path: sys.path.insert(0,'/')`);
+
+    // Patch stdout/stderr/input
+    pyodide.globals.set('_post', (msg) => self.postMessage(msg));
+
+    await pyodide.runPythonAsync(`
+import sys, io, builtins, js
+
+class _TermOut:
+    def __init__(self, kind):
+        self.kind = kind
+        self._buf = ""
+    def write(self, s):
+        self._buf += s
+        if "\\n" in self._buf or len(self._buf) > 200:
+            self.flush()
+    def flush(self):
+        if self._buf:
+            _post.callKw({"type": "stdout" if self.kind=="out" else "stderr", "text": self._buf})
+            self._buf = ""
+    def fileno(self):
+        raise io.UnsupportedOperation("fileno")
+
+sys.stdout = _TermOut("out")
+sys.stderr = _TermOut("err")
+`);
+
+    // Custom input() that blocks using SharedArrayBuffer
+    pyodide.globals.set('_controlBuf', controlBuf);
+    pyodide.globals.set('_dataBuf', dataBuf);
+    pyodide.globals.set('_dataLenBuf', dataLenBuf);
+
+    await pyodide.runPythonAsync(`
+import builtins, js
+from js import Atomics
+
+_real_input = builtins.input
+
+def _terminal_input(prompt=""):
+    # Flush stdout first so prompt appears
+    sys.stdout.flush()
+    # Signal main thread: input needed, send prompt
+    _post.callKw({"type": "input-request", "prompt": str(prompt)})
+    # Set control to 1 (waiting), then block until main sets it to 2
+    Atomics.store(_controlBuf, 0, 1)
+    Atomics.wait(_controlBuf, 0, 1)  # blocks until value changes from 1
+    # Check for stop
+    if Atomics.load(_controlBuf, 0) == 3:
+        raise KeyboardInterrupt("Stopped by user")
+    # Read response from shared buffer
+    length = Atomics.load(_dataLenBuf, 0)
+    raw = bytes([_dataBuf[i] for i in range(length)])
+    result = raw.decode('utf-8')
+    # Reset control
+    Atomics.store(_controlBuf, 0, 0)
+    return result
+
+builtins.input = _terminal_input
+`);
+
+    try {
+      const code = files.find(f => f.name === activeFile)?.content || '';
+      await pyodide.runPythonAsync(code);
+      // Final flush
+      await pyodide.runPythonAsync(`sys.stdout.flush(); sys.stderr.flush()`);
+      self.postMessage({ type:'done', exitCode:0 });
+    } catch(err) {
+      await pyodide.runPythonAsync(`
+try:
+    sys.stdout.flush(); sys.stderr.flush()
+except: pass
+`);
+      const msg = err.message || String(err);
+      if (msg.includes('KeyboardInterrupt') || msg.includes('Stopped by user')) {
+        self.postMessage({ type:'stopped' });
+      } else {
+        self.postMessage({ type:'stderr', text: '\n' + msg + '\n' });
+        self.postMessage({ type:'done', exitCode:1 });
+      }
+    }
+    return;
+  }
+
+  if (type === 'stop') {
+    Atomics.store(controlBuf, 0, 3);
+    Atomics.notify(controlBuf, 0);
+    return;
+  }
+};
+</script>
+
 <script>
-let pyodideInstance = null;
+// ── MAIN THREAD ────────────────────────────────────────
+
+// SharedArrayBuffer channels
+const controlSAB = new SharedArrayBuffer(4);   // Int32: control signal
+const dataSAB    = new SharedArrayBuffer(65536); // Uint8: input text
+const dataLenSAB = new SharedArrayBuffer(4);   // Int32: input byte length
+const controlArr = new Int32Array(controlSAB);
+const dataArr    = new Uint8Array(dataSAB);
+const dataLenArr = new Int32Array(dataLenSAB);
+
+let worker = null;
+let isRunning = false;
+let isWaitingInput = false;
+let startTime = 0;
+let suppressChange = false;
 let editor = null;
 
-const DEFAULT_CODE = `# Welcome to the ICT103 Python Compiler!
-# Write your Python code here and click Run (or press Ctrl+Enter)
+// File state
+let files = [];
+let activeFile = null;
+let openTabs = [];
+let renamingFile = null;
+
+const MAIN_DEFAULT = `# Welcome to the ICT103 Python Compiler!
+# Type your code here, then click Run (or Ctrl+Enter).
+# The terminal on the right behaves like a real Python terminal!
 
 name = input("Enter your name: ")
 print(f"Hello, {name}! Welcome to ICT103.")
+print("Try editing this code and running it again.")
 `;
 
 const EXAMPLES = {
   hello: `# Hello World
 print("Hello, World!")
-print("Welcome to ICT103 Python Programming!")`,
-
-  input: `# User Input Example
-name = input("Enter your name: ")
-age = int(input("Enter your age: "))
-print(f"Hello {name}! You are {age} years old.")
-print(f"In 10 years you will be {age + 10}.")`,
-
-  loop: `# For Loop Example
-print("Counting from 1 to 10:")
-for i in range(1, 11):
-    print(f"  Number: {i}")
-
+print("Welcome to ICT103 Python Programming!")
+`,
+  acknowledge: `# Acknowledgement Program
+print("=" * 40)
+print("  ICT103 - Programming Fundamentals")
+print("=" * 40)
+student = input("Enter your student ID: ")
+name = input("Enter your full name: ")
 print()
-print("Even numbers between 1 and 20:")
-for i in range(2, 21, 2):
-    print(i, end=" ")
-print()`,
-
-  function: `# Functions Example
-def greet(name, greeting="Hello"):
-    return f"{greeting}, {name}!"
-
-def calculate_area(length, width):
-    return length * width
-
-print(greet("Alice"))
-print(greet("Bob", "Good morning"))
-
-length = float(input("Enter rectangle length: "))
-width = float(input("Enter rectangle width: "))
-area = calculate_area(length, width)
-print(f"Area = {area}")`,
-
-  list: `# Lists Example
-fruits = ["apple", "banana", "cherry", "date"]
-
-print("All fruits:")
-for fruit in fruits:
-    print(f"  - {fruit}")
-
-fruits.append("elderberry")
-print(f"\\nAfter adding elderberry: {fruits}")
-print(f"Total fruits: {len(fruits)}")
-print(f"First fruit: {fruits[0]}")
-print(f"Last fruit: {fruits[-1]}")`,
-
-  calc: `# Simple Calculator
-print("=== Simple Calculator ===")
-num1 = float(input("Enter first number: "))
-operator = input("Enter operator (+, -, *, /): ")
-num2 = float(input("Enter second number: "))
-
-if operator == "+":
-    result = num1 + num2
-elif operator == "-":
-    result = num1 - num2
-elif operator == "*":
-    result = num1 * num2
-elif operator == "/":
-    if num2 != 0:
-        result = num1 / num2
-    else:
-        result = "Error: Division by zero"
-else:
-    result = "Error: Unknown operator"
-
-print(f"Result: {num1} {operator} {num2} = {result}")`
+print(f"Submitted by: {name} ({student})")
+print("I acknowledge this is my own work.")
+print("=" * 40)
+`
 };
 
-// Init CodeMirror
+// ── WORKER SETUP ───────────────────────────────────────
+function startWorker() {
+  const src = document.getElementById('worker-src').textContent;
+  const blob = new Blob([src], { type:'application/javascript' });
+  const url = URL.createObjectURL(blob);
+  worker = new Worker(url);
+
+  worker.onmessage = (e) => {
+    const msg = e.data;
+    if (msg.type === 'load-progress') {
+      document.getElementById('load-bar').style.width = msg.pct + '%';
+      document.getElementById('load-msg').textContent = msg.msg;
+      return;
+    }
+    if (msg.type === 'ready') {
+      const ov = document.getElementById('loading-overlay');
+      ov.style.opacity = '0'; setTimeout(() => ov.style.display = 'none', 400);
+      setStatus('ready', 'Python 3 ready');
+      document.getElementById('run-btn').disabled = false;
+      return;
+    }
+    if (msg.type === 'error') {
+      document.getElementById('load-msg').textContent = msg.msg;
+      document.getElementById('load-bar').style.background = 'var(--red)';
+      return;
+    }
+    if (msg.type === 'stdout') { appendTerminal(msg.text, 't-stdout'); return; }
+    if (msg.type === 'stderr') { appendTerminal(msg.text, 't-stderr'); return; }
+    if (msg.type === 'input-request') {
+      // Show prompt inline, then enable input
+      if (msg.prompt) appendTerminal(msg.prompt, 't-prompt');
+      enableInput();
+      return;
+    }
+    if (msg.type === 'done') {
+      const elapsed = ((performance.now() - startTime) / 1000).toFixed(3);
+      document.getElementById('exec-time').textContent = `⏱ ${elapsed}s`;
+      const code = msg.exitCode === 0 ? 'ready' : 'error';
+      const txt  = msg.exitCode === 0 ? 'Finished' : 'Finished with errors';
+      setStatus(code, txt);
+      finishRun();
+      return;
+    }
+    if (msg.type === 'stopped') {
+      appendTerminal('\n[Stopped]\n', 't-system');
+      setStatus('ready', 'Stopped');
+      finishRun();
+      return;
+    }
+  };
+
+  worker.postMessage({ type:'init', controlSAB, dataSAB, dataLenSAB });
+}
+
+// Check SharedArrayBuffer support
+if (typeof SharedArrayBuffer === 'undefined') {
+  document.getElementById('load-msg').textContent =
+    'SharedArrayBuffer not available. The page must be served with COOP/COEP headers.';
+  document.getElementById('load-bar').style.background = 'var(--red)';
+} else {
+  startWorker();
+}
+
+// ── INIT ───────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', () => {
   editor = CodeMirror.fromTextArea(document.getElementById('code-editor'), {
-    mode: 'python',
-    theme: 'default',
-    lineNumbers: true,
-    matchBrackets: true,
-    autoCloseBrackets: true,
-    indentUnit: 4,
-    tabSize: 4,
-    indentWithTabs: false,
-    extraKeys: {
-      'Ctrl-Enter': runCode,
-      'Cmd-Enter': runCode,
-      'Tab': (cm) => cm.execCommand('insertSoftTab')
-    }
+    mode:'python', lineNumbers:true, matchBrackets:true, autoCloseBrackets:true,
+    indentUnit:4, tabSize:4, indentWithTabs:false,
+    extraKeys:{ 'Ctrl-Enter':runCode, 'Cmd-Enter':runCode, 'Tab':cm=>cm.execCommand('insertSoftTab') }
   });
-  editor.setValue(DEFAULT_CODE);
-  editor.setSize('100%', '100%');
+  editor.setSize('100%','100%');
+  editor.on('change', () => {
+    if (suppressChange || !activeFile) return;
+    const f = getFile(activeFile); if (f) f.content = editor.getValue();
+  });
 
-  initPyodide();
+  // Terminal input: Enter submits
+  document.getElementById('terminal-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); submitInput(); }
+  });
+
+  files = [{ name:'main.py', content:MAIN_DEFAULT }];
+  openFile('main.py');
 });
 
-// Load Pyodide with progress
-async function initPyodide() {
-  const bar = document.getElementById('load-bar');
-  const msg = document.getElementById('load-msg');
+// ── FILE MANAGEMENT ────────────────────────────────────
+function getFile(name) { return files.find(f => f.name === name); }
 
-  bar.style.width = '20%';
-  msg.textContent = 'Fetching Python runtime…';
+function openFile(name) {
+  if (activeFile) { const c = getFile(activeFile); if (c) c.content = editor.getValue(); }
+  activeFile = name;
+  if (!openTabs.includes(name)) openTabs.push(name);
+  const f = getFile(name);
+  suppressChange = true; editor.setValue(f.content); suppressChange = false;
+  editor.focus();
+  document.getElementById('editor-filename').textContent = name;
+  renderSidebar(); renderTabs();
+}
 
-  try {
-    bar.style.width = '50%';
-    msg.textContent = 'Initialising Pyodide…';
-
-    pyodideInstance = await loadPyodide({ indexURL: 'https://cdn.pyodide.org/v0.26.4/full/' });
-
-    bar.style.width = '80%';
-    msg.textContent = 'Setting up environment…';
-    await new Promise(r => setTimeout(r, 200));
-    bar.style.width = '100%';
-    msg.textContent = 'Ready!';
-    await new Promise(r => setTimeout(r, 400));
-
-    const overlay = document.getElementById('loading-overlay');
-    overlay.style.opacity = '0';
-    setTimeout(() => overlay.style.display = 'none', 400);
-
-    setStatus('ready', 'Python 3 ready');
-    document.getElementById('run-btn').disabled = false;
-  } catch (e) {
-    msg.textContent = 'Failed to load: ' + e.message + ' — please refresh.';
-    bar.style.background = 'var(--red)';
+function closeTab(name) {
+  const idx = openTabs.indexOf(name); if (idx === -1) return;
+  openTabs.splice(idx, 1);
+  if (activeFile === name) {
+    if (openTabs.length > 0) openFile(openTabs[Math.max(0, idx-1)]);
+    else if (files.length > 0) openFile(files[0].name);
   }
+  renderTabs(); renderSidebar();
 }
 
-function setStatus(type, text) {
-  const dot = document.getElementById('status-dot');
-  const label = document.getElementById('status-text');
-  dot.className = 'status-indicator ' + type;
-  label.textContent = text;
+function createFile(name) {
+  if (!name.endsWith('.py')) name += '.py';
+  if (files.find(f => f.name === name)) { alert(`"${name}" already exists.`); return false; }
+  files.push({ name, content:`# ${name}\n` });
+  renderSidebar(); openFile(name); return true;
 }
 
-async function runCode() {
-  if (!pyodideInstance) return;
-
-  const code = editor.getValue();
-  const stdinRaw = document.getElementById('stdin-input').value.trim();
-
-  // Parse stdin — split by newline OR comma
-  const stdinLines = stdinRaw
-    ? stdinRaw.split(/\n|,/).map(s => s.trim()).filter(Boolean)
-    : [];
-
-  setStatus('running', 'Running…');
-  document.getElementById('run-btn').disabled = true;
-  document.getElementById('exec-time').textContent = '';
-
-  const outputEl = document.getElementById('output');
-  outputEl.innerHTML = '';
-
-  const startTime = performance.now();
-
-  try {
-    // Redirect stdout/stderr and handle input()
-    pyodideInstance.globals.set('_stdin_lines', pyodideInstance.toPy(stdinLines));
-
-    await pyodideInstance.runPythonAsync(`
-import sys
-import io
-
-class MockStdin:
-    def __init__(self, lines):
-        self._lines = list(lines)
-        self._idx = 0
-    def readline(self):
-        if self._idx < len(self._lines):
-            v = self._lines[self._idx]
-            self._idx += 1
-            return v + "\\n"
-        return ""
-
-_mock_stdin = MockStdin(_stdin_lines.to_py())
-
-import builtins
-_captured_output = []
-_captured_prompts = []
-
-_real_input = builtins.input
-
-def _mock_input(prompt=""):
-    line = _mock_stdin.readline().rstrip("\\n")
-    _captured_output.append(("prompt", str(prompt)))
-    _captured_output.append(("input_val", line))
-    return line
-
-builtins.input = _mock_input
-
-_stdout_capture = io.StringIO()
-_stderr_capture = io.StringIO()
-sys.stdout = _stdout_capture
-sys.stderr = _stderr_capture
-`);
-
-    await pyodideInstance.runPythonAsync(code);
-
-    const stdout = pyodideInstance.globals.get('_stdout_capture').getvalue();
-    const stderr = pyodideInstance.globals.get('_stderr_capture').getvalue();
-    const capturedRaw = pyodideInstance.globals.get('_captured_output');
-    const captured = capturedRaw.toJs();
-
-    // Restore
-    await pyodideInstance.runPythonAsync(`
-import builtins, sys
-builtins.input = _real_input
-sys.stdout = sys.__stdout__
-sys.stderr = sys.__stderr__
-`);
-
-    const elapsed = ((performance.now() - startTime) / 1000).toFixed(3);
-
-    // Build output display
-    if (captured.length === 0 && !stdout && !stderr) {
-      outputEl.innerHTML = '<span class="output-empty">// Program finished with no output.</span>';
-    } else {
-      let html = '';
-
-      // Show prompt+input pairs inline
-      for (const [type, val] of captured) {
-        if (type === 'prompt') {
-          html += `<span class="output-text">${escapeHtml(val)}</span>`;
-        } else if (type === 'input_val') {
-          html += `<span style="color:var(--blue)">${escapeHtml(val)}</span>\n`;
-        }
-      }
-
-      // Show remaining stdout (non-prompt output)
-      if (stdout) {
-        html += `<span class="output-success">${escapeHtml(stdout)}</span>`;
-      }
-
-      if (stderr) {
-        html += `\n<span class="output-error">${escapeHtml(stderr)}</span>`;
-      }
-
-      outputEl.innerHTML = html;
-    }
-
-    document.getElementById('exec-time').textContent = `⏱ ${elapsed}s`;
-    setStatus('ready', 'Finished');
-  } catch (err) {
-    const elapsed = ((performance.now() - startTime) / 1000).toFixed(3);
-    let errMsg = err.message || String(err);
-
-    // Try to restore on error too
-    try {
-      await pyodideInstance.runPythonAsync(`
-import builtins, sys
-builtins.input = _real_input
-sys.stdout = sys.__stdout__
-sys.stderr = sys.__stderr__
-`);
-    } catch (_) {}
-
-    outputEl.innerHTML = `<span class="output-error">${escapeHtml(errMsg)}</span>`;
-    document.getElementById('exec-time').textContent = `⏱ ${elapsed}s`;
-    setStatus('error', 'Error');
-  }
-
-  document.getElementById('run-btn').disabled = false;
+function deleteFile(name) {
+  if (files.length === 1) { alert('Cannot delete the only file.'); return; }
+  if (!confirm(`Delete "${name}"?`)) return;
+  files = files.filter(f => f.name !== name);
+  openTabs = openTabs.filter(t => t !== name);
+  if (activeFile === name) { activeFile = null; openFile(openTabs[0] || files[0].name); }
+  renderSidebar(); renderTabs();
 }
 
-function clearOutput() {
-  document.getElementById('output').innerHTML =
-    '<span class="output-empty">// Output cleared.</span>';
-  setStatus('ready', 'Python 3 ready');
-  document.getElementById('exec-time').textContent = '';
+function renameFile(oldName, newName) {
+  if (!newName.endsWith('.py')) newName += '.py';
+  if (newName === oldName) return;
+  if (files.find(f => f.name === newName)) { alert(`"${newName}" already exists.`); return; }
+  const f = getFile(oldName); f.name = newName;
+  openTabs = openTabs.map(t => t === oldName ? newName : t);
+  if (activeFile === oldName) { activeFile = newName; document.getElementById('editor-filename').textContent = newName; }
+  renderSidebar(); renderTabs();
 }
 
-function resetCode() {
-  if (confirm('Reset the editor to the default code?')) {
-    editor.setValue(DEFAULT_CODE);
-    clearOutput();
-  }
-}
-
-function loadExample(name) {
-  if (EXAMPLES[name]) {
-    editor.setValue(EXAMPLES[name]);
-    document.getElementById('stdin-input').value = '';
-    clearOutput();
-    editor.focus();
-  }
-}
-
-function copyCode() {
-  navigator.clipboard.writeText(editor.getValue())
-    .then(() => showToast('Code copied!'));
-}
-
-function copyOutput() {
-  const text = document.getElementById('output').innerText;
-  navigator.clipboard.writeText(text)
-    .then(() => showToast('Output copied!'));
-}
-
-function escapeHtml(str) {
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
-
-function showToast(msg) {
-  const t = document.createElement('div');
-  t.textContent = msg;
-  Object.assign(t.style, {
-    position: 'fixed', bottom: '20px', right: '20px',
-    background: 'var(--accent)', color: '#0e0f14',
-    padding: '8px 16px', borderRadius: '8px',
-    fontFamily: 'Syne, sans-serif', fontWeight: '700', fontSize: '13px',
-    zIndex: '9999', transition: 'opacity 0.3s'
+// ── RENDER ─────────────────────────────────────────────
+function renderSidebar() {
+  const list = document.getElementById('file-list'); list.innerHTML = '';
+  files.forEach(f => {
+    const item = document.createElement('div');
+    item.className = 'file-item' + (f.name === activeFile ? ' active' : '');
+    item.innerHTML = `<span class="file-icon">🐍</span><span class="file-name">${escHtml(f.name)}</span><div class="file-actions"><button class="file-action-btn" title="Rename" onclick="event.stopPropagation();openRenameModal('${escHtml(f.name)}')">✎</button><button class="file-action-btn del" title="Delete" onclick="event.stopPropagation();deleteFile('${escHtml(f.name)}')">✕</button></div>`;
+    item.addEventListener('click', () => openFile(f.name));
+    list.appendChild(item);
   });
+}
+
+function renderTabs() {
+  const bar = document.getElementById('tabs-bar'); bar.innerHTML = '';
+  openTabs.forEach(name => {
+    const tab = document.createElement('div');
+    tab.className = 'tab' + (name === activeFile ? ' active' : '');
+    tab.innerHTML = `<span class="tab-name">${escHtml(name)}</span><button class="tab-close" onclick="event.stopPropagation();closeTab('${escHtml(name)}')">×</button>`;
+    tab.addEventListener('click', () => openFile(name));
+    bar.appendChild(tab);
+  });
+}
+
+// ── MODALS ─────────────────────────────────────────────
+function openNewFileModal() { document.getElementById('new-file-name').value=''; document.getElementById('new-file-modal').classList.add('open'); setTimeout(()=>document.getElementById('new-file-name').focus(),50); }
+function closeNewFileModal() { document.getElementById('new-file-modal').classList.remove('open'); }
+function confirmNewFile() { const n=document.getElementById('new-file-name').value.trim(); if(!n)return; if(createFile(n))closeNewFileModal(); }
+function openRenameModal(name) { renamingFile=name; const inp=document.getElementById('rename-file-name'); inp.value=name; document.getElementById('rename-modal').classList.add('open'); setTimeout(()=>{inp.focus();inp.select();},50); }
+function closeRenameModal() { document.getElementById('rename-modal').classList.remove('open'); renamingFile=null; }
+function confirmRename() { const n=document.getElementById('rename-file-name').value.trim(); if(!n||!renamingFile)return; renameFile(renamingFile,n); closeRenameModal(); }
+document.addEventListener('keydown', e => {
+  if (e.key==='Escape') { closeNewFileModal(); closeRenameModal(); }
+  if (e.key==='Enter' && document.getElementById('new-file-modal').classList.contains('open')) confirmNewFile();
+  if (e.key==='Enter' && document.getElementById('rename-modal').classList.contains('open')) confirmRename();
+});
+
+// ── RUN / STOP ─────────────────────────────────────────
+function runCode() {
+  if (!worker || isRunning) return;
+  if (activeFile) { const f = getFile(activeFile); if (f) f.content = editor.getValue(); }
+
+  clearTerminal();
+  appendTerminal(`Running ${activeFile}…\n`, 't-system');
+
+  isRunning = true; isWaitingInput = false; startTime = performance.now();
+  document.getElementById('run-btn').style.display = 'none';
+  document.getElementById('stop-btn').style.display = '';
+  disableInput();
+  setStatus('running', `Running ${activeFile}…`);
+
+  worker.postMessage({ type:'run', files: files.map(f=>({name:f.name, content:f.content})), activeFile });
+}
+
+function stopCode() {
+  if (!isRunning) return;
+  worker.postMessage({ type:'stop' });
+}
+
+function finishRun() {
+  isRunning = false; isWaitingInput = false;
+  document.getElementById('run-btn').style.display = '';
+  document.getElementById('stop-btn').style.display = 'none';
+  disableInput();
+}
+
+// ── TERMINAL ───────────────────────────────────────────
+function appendTerminal(text, cls) {
+  const out = document.getElementById('terminal-output');
+  const span = document.createElement('span');
+  span.className = cls; span.textContent = text;
+  out.appendChild(span);
+  out.scrollTop = out.scrollHeight;
+}
+
+function enableInput() {
+  isWaitingInput = true;
+  setStatus('waiting', 'Waiting for input…');
+  const inp = document.getElementById('terminal-input');
+  const btn = document.getElementById('terminal-send');
+  inp.disabled = false; btn.disabled = false;
+  inp.value = ''; inp.focus();
+}
+
+function disableInput() {
+  isWaitingInput = false;
+  const inp = document.getElementById('terminal-input');
+  const btn = document.getElementById('terminal-send');
+  inp.disabled = true; btn.disabled = true; inp.value = '';
+  inp.placeholder = 'Type input here and press Enter…';
+}
+
+function submitInput() {
+  if (!isWaitingInput) return;
+  const inp = document.getElementById('terminal-input');
+  const value = inp.value;
+
+  // Echo input to terminal in blue
+  appendTerminal(value + '\n', 't-input');
+
+  // Write to SharedArrayBuffer
+  const encoded = new TextEncoder().encode(value);
+  const len = Math.min(encoded.length, dataArr.length);
+  dataArr.set(encoded.subarray(0, len));
+  Atomics.store(dataLenArr, 0, len);
+
+  // Signal worker: input ready (2)
+  Atomics.store(controlArr, 0, 2);
+  Atomics.notify(controlArr, 0);
+
+  disableInput();
+  setStatus('running', `Running ${activeFile}…`);
+}
+
+function clearTerminal() {
+  document.getElementById('terminal-output').innerHTML = '';
+  document.getElementById('exec-time').textContent = '';
+}
+
+// ── HELPERS ────────────────────────────────────────────
+function setStatus(type, text) {
+  document.getElementById('status-dot').className = 'status-dot ' + type;
+  document.getElementById('status-text').textContent = text;
+}
+
+function resetActiveFile() {
+  if (!activeFile || !confirm(`Reset "${activeFile}" to blank?`)) return;
+  const f = getFile(activeFile);
+  f.content = activeFile === 'main.py' ? MAIN_DEFAULT : `# ${activeFile}\n`;
+  suppressChange = true; editor.setValue(f.content); suppressChange = false;
+}
+
+function loadExample(key) {
+  if (!EXAMPLES[key] || !activeFile) return;
+  if (!confirm(`Load "${key}" example into "${activeFile}"?`)) return;
+  const f = getFile(activeFile); f.content = EXAMPLES[key];
+  suppressChange = true; editor.setValue(f.content); suppressChange = false; editor.focus();
+}
+
+function copyCode() { navigator.clipboard.writeText(editor.getValue()).then(()=>toast('Code copied!')); }
+function copyOutput() {
+  const text = document.getElementById('terminal-output').innerText;
+  navigator.clipboard.writeText(text).then(()=>toast('Output copied!'));
+}
+
+function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function toast(msg) {
+  const t = document.createElement('div'); t.textContent = msg;
+  Object.assign(t.style,{position:'fixed',bottom:'20px',right:'20px',background:'var(--accent)',color:'#0e0f14',padding:'7px 14px',borderRadius:'7px',fontFamily:'Syne,sans-serif',fontWeight:'700',fontSize:'12px',zIndex:'9999',transition:'opacity 0.3s'});
   document.body.appendChild(t);
-  setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 1800);
+  setTimeout(()=>{t.style.opacity='0';setTimeout(()=>t.remove(),300);},1800);
 }
 </script>
 </body>
