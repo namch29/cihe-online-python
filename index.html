@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ICT103 Python Compiler</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/comment/comment.min.js"></script>
+  <style>
+    :root {
+      --bg: #0e0f14;
+      --surface: #16181f;
+      --surface2: #1e2029;
+      --border: #2a2d3a;
+      --accent: #f5c518;
+      --accent2: #e8843a;
+      --text: #e4e6f0;
+      --muted: #6b7087;
+      --green: #4ade80;
+      --red: #f87171;
+      --blue: #60a5fa;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Syne', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 28px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo-icon {
+      width: 34px; height: 34px;
+      background: var(--accent);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+      font-size: 14px;
+      color: #0e0f14;
+      flex-shrink: 0;
+    }
+
+    .logo-text {
+      font-size: 17px;
+      font-weight: 800;
+      letter-spacing: -0.3px;
+    }
+
+    .logo-text span {
+      color: var(--accent);
+    }
+
+    .badge {
+      margin-left: auto;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-size: 11px;
+      color: var(--muted);
+      font-family: 'JetBrains Mono', monospace;
+      letter-spacing: 0.5px;
+    }
+
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 20px 24px;
+      gap: 16px;
+      max-width: 1200px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 9px 18px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 13px;
+      transition: all 0.15s ease;
+      letter-spacing: 0.2px;
+    }
+
+    .btn-run {
+      background: var(--accent);
+      color: #0e0f14;
+    }
+    .btn-run:hover { background: #ffd63a; transform: translateY(-1px); }
+    .btn-run:active { transform: translateY(0); }
+    .btn-run:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    .btn-clear {
+      background: var(--surface2);
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+    .btn-clear:hover { color: var(--text); border-color: var(--muted); }
+
+    .btn-reset {
+      background: var(--surface2);
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+    .btn-reset:hover { color: var(--red); border-color: var(--red); }
+
+    .shortcut-hint {
+      margin-left: auto;
+      font-size: 11px;
+      color: var(--muted);
+      font-family: 'JetBrains Mono', monospace;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      padding: 5px 10px;
+      border-radius: 6px;
+    }
+
+    .editor-section {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      flex: 1;
+    }
+
+    @media (max-width: 768px) {
+      .editor-section { grid-template-columns: 1fr; }
+    }
+
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface2);
+    }
+
+    .panel-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+    }
+
+    .panel-title {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .panel-actions {
+      margin-left: auto;
+      display: flex;
+      gap: 6px;
+    }
+
+    .icon-btn {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 3px 6px;
+      border-radius: 4px;
+      font-size: 13px;
+      transition: color 0.15s;
+    }
+    .icon-btn:hover { color: var(--text); }
+
+    .CodeMirror {
+      font-family: 'JetBrains Mono', monospace !important;
+      font-size: 14px !important;
+      line-height: 1.65 !important;
+      height: 100% !important;
+      background: var(--surface) !important;
+      color: #e4e6f0 !important;
+    }
+
+    .CodeMirror-scroll { min-height: 340px; }
+    .CodeMirror-gutters { background: var(--surface2) !important; border-right: 1px solid var(--border) !important; }
+    .CodeMirror-linenumber { color: var(--muted) !important; }
+    .CodeMirror-cursor { border-left: 2px solid var(--accent) !important; }
+    .CodeMirror-selected { background: rgba(245,197,24,0.12) !important; }
+    .CodeMirror-focused .CodeMirror-selected { background: rgba(245,197,24,0.15) !important; }
+
+    /* Python syntax colors */
+    .cm-keyword { color: #c792ea !important; }
+    .cm-def { color: #82aaff !important; }
+    .cm-string { color: #c3e88d !important; }
+    .cm-string-2 { color: #c3e88d !important; }
+    .cm-number { color: #f78c6c !important; }
+    .cm-comment { color: #546e7a !important; font-style: italic !important; }
+    .cm-builtin { color: var(--accent2) !important; }
+    .cm-operator { color: #89ddff !important; }
+    .cm-variable { color: var(--text) !important; }
+
+    /* Input section */
+    .input-section {
+      border-top: 1px solid var(--border);
+      padding: 10px 16px;
+      background: var(--surface2);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .input-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: var(--muted);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .stdin-input {
+      flex: 1;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 7px 10px;
+      color: var(--text);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .stdin-input:focus { border-color: var(--accent); }
+    .stdin-input::placeholder { color: var(--muted); }
+
+    /* Output panel */
+    .output-body {
+      flex: 1;
+      padding: 16px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13.5px;
+      line-height: 1.7;
+      overflow-y: auto;
+      min-height: 340px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .output-empty {
+      color: var(--muted);
+      font-style: italic;
+      font-size: 13px;
+    }
+
+    .output-success { color: var(--green); }
+    .output-error { color: var(--red); }
+    .output-text { color: var(--text); }
+
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      border-top: 1px solid var(--border);
+      background: var(--surface2);
+    }
+
+    .status-indicator {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--muted);
+      flex-shrink: 0;
+    }
+    .status-indicator.ready { background: var(--green); }
+    .status-indicator.running { background: var(--accent); animation: pulse 0.8s infinite; }
+    .status-indicator.error { background: var(--red); }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    .status-text {
+      font-size: 11px;
+      color: var(--muted);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .exec-time {
+      margin-left: auto;
+      font-size: 11px;
+      color: var(--muted);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Loading overlay */
+    #loading-overlay {
+      position: fixed; inset: 0;
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      z-index: 999;
+      transition: opacity 0.4s ease;
+    }
+
+    .loading-logo {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+    .loading-logo span { color: var(--accent); }
+
+    .loading-bar-bg {
+      width: 240px;
+      height: 3px;
+      background: var(--border);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+
+    .loading-bar {
+      height: 100%;
+      width: 0%;
+      background: var(--accent);
+      border-radius: 99px;
+      transition: width 0.3s ease;
+    }
+
+    .loading-msg {
+      font-size: 12px;
+      color: var(--muted);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .examples-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .examples-label {
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    .example-chip {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 99px;
+      padding: 4px 12px;
+      font-size: 12px;
+      color: var(--muted);
+      cursor: pointer;
+      font-family: 'JetBrains Mono', monospace;
+      transition: all 0.15s;
+    }
+    .example-chip:hover { color: var(--accent); border-color: var(--accent); }
+  </style>
+</head>
+<body>
+
+<div id="loading-overlay">
+  <div class="loading-logo">ICT103 <span>Python</span></div>
+  <div class="loading-bar-bg"><div class="loading-bar" id="load-bar"></div></div>
+  <div class="loading-msg" id="load-msg">Loading Python runtime…</div>
+</div>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">Py</div>
+    <div class="logo-text">ICT103 <span>Python Compiler</span></div>
+  </div>
+  <div class="badge">Powered by Pyodide · Runs in your browser</div>
+</header>
+
+<div class="main">
+
+  <div class="toolbar">
+    <button class="btn btn-run" id="run-btn" disabled onclick="runCode()">
+      ▶ Run Code
+    </button>
+    <button class="btn btn-clear" onclick="clearOutput()">⌫ Clear Output</button>
+    <button class="btn btn-reset" onclick="resetCode()">↺ Reset</button>
+    <span class="shortcut-hint">Ctrl+Enter to run</span>
+  </div>
+
+  <div class="examples-bar">
+    <span class="examples-label">Examples:</span>
+    <span class="example-chip" onclick="loadExample('hello')">Hello World</span>
+    <span class="example-chip" onclick="loadExample('input')">User Input</span>
+    <span class="example-chip" onclick="loadExample('loop')">For Loop</span>
+    <span class="example-chip" onclick="loadExample('function')">Function</span>
+    <span class="example-chip" onclick="loadExample('list')">List</span>
+    <span class="example-chip" onclick="loadExample('calc')">Calculator</span>
+  </div>
+
+  <div class="editor-section">
+    <!-- Code Editor -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-dot" style="background:#f87171"></div>
+        <div class="panel-dot" style="background:#fbbf24"></div>
+        <div class="panel-dot" style="background:#4ade80"></div>
+        <span class="panel-title" style="margin-left:6px">Code Editor</span>
+        <div class="panel-actions">
+          <button class="icon-btn" title="Copy code" onclick="copyCode()">⎘</button>
+        </div>
+      </div>
+      <textarea id="code-editor"></textarea>
+      <div class="input-section">
+        <span class="input-label">stdin</span>
+        <input class="stdin-input" id="stdin-input" type="text"
+               placeholder="Enter input values here (one per line, or comma-separated)…" />
+      </div>
+    </div>
+
+    <!-- Output -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-dot" style="background:var(--muted)"></div>
+        <span class="panel-title">Output</span>
+        <div class="panel-actions">
+          <button class="icon-btn" title="Copy output" onclick="copyOutput()">⎘</button>
+        </div>
+      </div>
+      <div class="output-body" id="output">
+        <span class="output-empty">// Your program output will appear here…</span>
+      </div>
+      <div class="status-bar">
+        <div class="status-indicator" id="status-dot"></div>
+        <span class="status-text" id="status-text">Loading Python…</span>
+        <span class="exec-time" id="exec-time"></span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js"></script>
+<script>
+let pyodide = null;
+let editor = null;
+
+const DEFAULT_CODE = `# Welcome to the ICT103 Python Compiler!
+# Write your Python code here and click Run (or press Ctrl+Enter)
+
+name = input("Enter your name: ")
+print(f"Hello, {name}! Welcome to ICT103.")
+`;
+
+const EXAMPLES = {
+  hello: `# Hello World
+print("Hello, World!")
+print("Welcome to ICT103 Python Programming!")`,
+
+  input: `# User Input Example
+name = input("Enter your name: ")
+age = int(input("Enter your age: "))
+print(f"Hello {name}! You are {age} years old.")
+print(f"In 10 years you will be {age + 10}.")`,
+
+  loop: `# For Loop Example
+print("Counting from 1 to 10:")
+for i in range(1, 11):
+    print(f"  Number: {i}")
+
+print()
+print("Even numbers between 1 and 20:")
+for i in range(2, 21, 2):
+    print(i, end=" ")
+print()`,
+
+  function: `# Functions Example
+def greet(name, greeting="Hello"):
+    return f"{greeting}, {name}!"
+
+def calculate_area(length, width):
+    return length * width
+
+print(greet("Alice"))
+print(greet("Bob", "Good morning"))
+
+length = float(input("Enter rectangle length: "))
+width = float(input("Enter rectangle width: "))
+area = calculate_area(length, width)
+print(f"Area = {area}")`,
+
+  list: `# Lists Example
+fruits = ["apple", "banana", "cherry", "date"]
+
+print("All fruits:")
+for fruit in fruits:
+    print(f"  - {fruit}")
+
+fruits.append("elderberry")
+print(f"\\nAfter adding elderberry: {fruits}")
+print(f"Total fruits: {len(fruits)}")
+print(f"First fruit: {fruits[0]}")
+print(f"Last fruit: {fruits[-1]}")`,
+
+  calc: `# Simple Calculator
+print("=== Simple Calculator ===")
+num1 = float(input("Enter first number: "))
+operator = input("Enter operator (+, -, *, /): ")
+num2 = float(input("Enter second number: "))
+
+if operator == "+":
+    result = num1 + num2
+elif operator == "-":
+    result = num1 - num2
+elif operator == "*":
+    result = num1 * num2
+elif operator == "/":
+    if num2 != 0:
+        result = num1 / num2
+    else:
+        result = "Error: Division by zero"
+else:
+    result = "Error: Unknown operator"
+
+print(f"Result: {num1} {operator} {num2} = {result}")`
+};
+
+// Init CodeMirror
+window.addEventListener('DOMContentLoaded', () => {
+  editor = CodeMirror.fromTextArea(document.getElementById('code-editor'), {
+    mode: 'python',
+    theme: 'default',
+    lineNumbers: true,
+    matchBrackets: true,
+    autoCloseBrackets: true,
+    indentUnit: 4,
+    tabSize: 4,
+    indentWithTabs: false,
+    extraKeys: {
+      'Ctrl-Enter': runCode,
+      'Cmd-Enter': runCode,
+      'Tab': (cm) => cm.execCommand('insertSoftTab')
+    }
+  });
+  editor.setValue(DEFAULT_CODE);
+  editor.setSize('100%', '100%');
+
+  loadPyodide();
+});
+
+// Load Pyodide with progress
+async function loadPyodide() {
+  const bar = document.getElementById('load-bar');
+  const msg = document.getElementById('load-msg');
+
+  const steps = [
+    [20, 'Fetching Python runtime…'],
+    [50, 'Initialising Pyodide…'],
+    [80, 'Setting up environment…'],
+    [100, 'Ready!']
+  ];
+
+  for (const [pct, text] of steps.slice(0, 2)) {
+    bar.style.width = pct + '%';
+    msg.textContent = text;
+    await new Promise(r => setTimeout(r, 300));
+  }
+
+  try {
+    pyodide = await loadPyodide({ indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.25.0/full/' });
+    bar.style.width = '80%';
+    msg.textContent = 'Setting up environment…';
+    await new Promise(r => setTimeout(r, 200));
+    bar.style.width = '100%';
+    msg.textContent = 'Ready!';
+    await new Promise(r => setTimeout(r, 400));
+
+    const overlay = document.getElementById('loading-overlay');
+    overlay.style.opacity = '0';
+    setTimeout(() => overlay.style.display = 'none', 400);
+
+    setStatus('ready', 'Python 3 ready');
+    document.getElementById('run-btn').disabled = false;
+  } catch (e) {
+    msg.textContent = 'Failed to load. Please refresh.';
+    bar.style.background = 'var(--red)';
+  }
+}
+
+function setStatus(type, text) {
+  const dot = document.getElementById('status-dot');
+  const label = document.getElementById('status-text');
+  dot.className = 'status-indicator ' + type;
+  label.textContent = text;
+}
+
+async function runCode() {
+  if (!pyodide) return;
+
+  const code = editor.getValue();
+  const stdinRaw = document.getElementById('stdin-input').value.trim();
+
+  // Parse stdin — split by newline OR comma
+  const stdinLines = stdinRaw
+    ? stdinRaw.split(/\n|,/).map(s => s.trim()).filter(Boolean)
+    : [];
+
+  setStatus('running', 'Running…');
+  document.getElementById('run-btn').disabled = true;
+  document.getElementById('exec-time').textContent = '';
+
+  const outputEl = document.getElementById('output');
+  outputEl.innerHTML = '';
+
+  const startTime = performance.now();
+
+  try {
+    // Redirect stdout/stderr and handle input()
+    pyodide.globals.set('_stdin_lines', pyodide.toPy(stdinLines));
+
+    await pyodide.runPythonAsync(`
+import sys
+import io
+
+class MockStdin:
+    def __init__(self, lines):
+        self._lines = list(lines)
+        self._idx = 0
+    def readline(self):
+        if self._idx < len(self._lines):
+            v = self._lines[self._idx]
+            self._idx += 1
+            return v + "\\n"
+        return ""
+
+_mock_stdin = MockStdin(_stdin_lines.to_py())
+
+import builtins
+_captured_output = []
+_captured_prompts = []
+
+_real_input = builtins.input
+
+def _mock_input(prompt=""):
+    line = _mock_stdin.readline().rstrip("\\n")
+    _captured_output.append(("prompt", str(prompt)))
+    _captured_output.append(("input_val", line))
+    return line
+
+builtins.input = _mock_input
+
+_stdout_capture = io.StringIO()
+_stderr_capture = io.StringIO()
+sys.stdout = _stdout_capture
+sys.stderr = _stderr_capture
+`);
+
+    await pyodide.runPythonAsync(code);
+
+    const stdout = pyodide.globals.get('_stdout_capture').getvalue();
+    const stderr = pyodide.globals.get('_stderr_capture').getvalue();
+    const capturedRaw = pyodide.globals.get('_captured_output');
+    const captured = capturedRaw.toJs();
+
+    // Restore
+    await pyodide.runPythonAsync(`
+import builtins, sys
+builtins.input = _real_input
+sys.stdout = sys.__stdout__
+sys.stderr = sys.__stderr__
+`);
+
+    const elapsed = ((performance.now() - startTime) / 1000).toFixed(3);
+
+    // Build output display
+    if (captured.length === 0 && !stdout && !stderr) {
+      outputEl.innerHTML = '<span class="output-empty">// Program finished with no output.</span>';
+    } else {
+      let html = '';
+
+      // Show prompt+input pairs inline
+      for (const [type, val] of captured) {
+        if (type === 'prompt') {
+          html += `<span class="output-text">${escapeHtml(val)}</span>`;
+        } else if (type === 'input_val') {
+          html += `<span style="color:var(--blue)">${escapeHtml(val)}</span>\n`;
+        }
+      }
+
+      // Show remaining stdout (non-prompt output)
+      if (stdout) {
+        html += `<span class="output-success">${escapeHtml(stdout)}</span>`;
+      }
+
+      if (stderr) {
+        html += `\n<span class="output-error">${escapeHtml(stderr)}</span>`;
+      }
+
+      outputEl.innerHTML = html;
+    }
+
+    document.getElementById('exec-time').textContent = `⏱ ${elapsed}s`;
+    setStatus('ready', 'Finished');
+  } catch (err) {
+    const elapsed = ((performance.now() - startTime) / 1000).toFixed(3);
+    let errMsg = err.message || String(err);
+
+    // Try to restore on error too
+    try {
+      await pyodide.runPythonAsync(`
+import builtins, sys
+builtins.input = _real_input
+sys.stdout = sys.__stdout__
+sys.stderr = sys.__stderr__
+`);
+    } catch (_) {}
+
+    outputEl.innerHTML = `<span class="output-error">${escapeHtml(errMsg)}</span>`;
+    document.getElementById('exec-time').textContent = `⏱ ${elapsed}s`;
+    setStatus('error', 'Error');
+  }
+
+  document.getElementById('run-btn').disabled = false;
+}
+
+function clearOutput() {
+  document.getElementById('output').innerHTML =
+    '<span class="output-empty">// Output cleared.</span>';
+  setStatus('ready', 'Python 3 ready');
+  document.getElementById('exec-time').textContent = '';
+}
+
+function resetCode() {
+  if (confirm('Reset the editor to the default code?')) {
+    editor.setValue(DEFAULT_CODE);
+    clearOutput();
+  }
+}
+
+function loadExample(name) {
+  if (EXAMPLES[name]) {
+    editor.setValue(EXAMPLES[name]);
+    document.getElementById('stdin-input').value = '';
+    clearOutput();
+    editor.focus();
+  }
+}
+
+function copyCode() {
+  navigator.clipboard.writeText(editor.getValue())
+    .then(() => showToast('Code copied!'));
+}
+
+function copyOutput() {
+  const text = document.getElementById('output').innerText;
+  navigator.clipboard.writeText(text)
+    .then(() => showToast('Output copied!'));
+}
+
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.textContent = msg;
+  Object.assign(t.style, {
+    position: 'fixed', bottom: '20px', right: '20px',
+    background: 'var(--accent)', color: '#0e0f14',
+    padding: '8px 16px', borderRadius: '8px',
+    fontFamily: 'Syne, sans-serif', fontWeight: '700', fontSize: '13px',
+    zIndex: '9999', transition: 'opacity 0.3s'
+  });
+  document.body.appendChild(t);
+  setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 1800);
+}
+</script>
+</body>
+</html>
