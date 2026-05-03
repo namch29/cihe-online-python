@@ -485,9 +485,9 @@
 
 </div>
 
-<script src="https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js"></script>
+<script src="https://cdn.pyodide.org/v0.26.4/full/pyodide.js"></script>
 <script>
-let pyodide = null;
+let pyodideInstance = null;
 let editor = null;
 
 const DEFAULT_CODE = `# Welcome to the ICT103 Python Compiler!
@@ -590,29 +590,23 @@ window.addEventListener('DOMContentLoaded', () => {
   editor.setValue(DEFAULT_CODE);
   editor.setSize('100%', '100%');
 
-  loadPyodide();
+  initPyodide();
 });
 
 // Load Pyodide with progress
-async function loadPyodide() {
+async function initPyodide() {
   const bar = document.getElementById('load-bar');
   const msg = document.getElementById('load-msg');
 
-  const steps = [
-    [20, 'Fetching Python runtime…'],
-    [50, 'Initialising Pyodide…'],
-    [80, 'Setting up environment…'],
-    [100, 'Ready!']
-  ];
-
-  for (const [pct, text] of steps.slice(0, 2)) {
-    bar.style.width = pct + '%';
-    msg.textContent = text;
-    await new Promise(r => setTimeout(r, 300));
-  }
+  bar.style.width = '20%';
+  msg.textContent = 'Fetching Python runtime…';
 
   try {
-    pyodide = await loadPyodide({ indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.25.0/full/' });
+    bar.style.width = '50%';
+    msg.textContent = 'Initialising Pyodide…';
+
+    pyodideInstance = await loadPyodide({ indexURL: 'https://cdn.pyodide.org/v0.26.4/full/' });
+
     bar.style.width = '80%';
     msg.textContent = 'Setting up environment…';
     await new Promise(r => setTimeout(r, 200));
@@ -627,7 +621,7 @@ async function loadPyodide() {
     setStatus('ready', 'Python 3 ready');
     document.getElementById('run-btn').disabled = false;
   } catch (e) {
-    msg.textContent = 'Failed to load. Please refresh.';
+    msg.textContent = 'Failed to load: ' + e.message + ' — please refresh.';
     bar.style.background = 'var(--red)';
   }
 }
@@ -640,7 +634,7 @@ function setStatus(type, text) {
 }
 
 async function runCode() {
-  if (!pyodide) return;
+  if (!pyodideInstance) return;
 
   const code = editor.getValue();
   const stdinRaw = document.getElementById('stdin-input').value.trim();
@@ -661,9 +655,9 @@ async function runCode() {
 
   try {
     // Redirect stdout/stderr and handle input()
-    pyodide.globals.set('_stdin_lines', pyodide.toPy(stdinLines));
+    pyodideInstance.globals.set('_stdin_lines', pyodideInstance.toPy(stdinLines));
 
-    await pyodide.runPythonAsync(`
+    await pyodideInstance.runPythonAsync(`
 import sys
 import io
 
@@ -700,15 +694,15 @@ sys.stdout = _stdout_capture
 sys.stderr = _stderr_capture
 `);
 
-    await pyodide.runPythonAsync(code);
+    await pyodideInstance.runPythonAsync(code);
 
-    const stdout = pyodide.globals.get('_stdout_capture').getvalue();
-    const stderr = pyodide.globals.get('_stderr_capture').getvalue();
-    const capturedRaw = pyodide.globals.get('_captured_output');
+    const stdout = pyodideInstance.globals.get('_stdout_capture').getvalue();
+    const stderr = pyodideInstance.globals.get('_stderr_capture').getvalue();
+    const capturedRaw = pyodideInstance.globals.get('_captured_output');
     const captured = capturedRaw.toJs();
 
     // Restore
-    await pyodide.runPythonAsync(`
+    await pyodideInstance.runPythonAsync(`
 import builtins, sys
 builtins.input = _real_input
 sys.stdout = sys.__stdout__
@@ -752,7 +746,7 @@ sys.stderr = sys.__stderr__
 
     // Try to restore on error too
     try {
-      await pyodide.runPythonAsync(`
+      await pyodideInstance.runPythonAsync(`
 import builtins, sys
 builtins.input = _real_input
 sys.stdout = sys.__stdout__
